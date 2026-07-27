@@ -39,33 +39,7 @@ Develop a secure, automated, and paperless digital pipeline that:
 
 ## 🏗️ System Architecture
 
-```mermaid
-flowchart TD
-    subgraph Client [Client-Side Application React/Vite]
-        Router[React Router 7]
-        AuthCtx[Auth Context]
-        Dashboards[Role Dashboards: Student, Lab, Librarian, HOD, Principal]
-        PDF[jsPDF Certificate & Receipt Generator]
-    end
-
-    subgraph Backend [Backend Services Supabase & PostgreSQL]
-        S_Auth[Supabase Auth]
-        S_Storage[Supabase Storage]
-        
-        subgraph DB [PostgreSQL Relational Database]
-            Tables[(Tables: Profiles, Dues, Applications, Approvals)]
-            Triggers[State Transition Triggers & RPCs]
-        end
-    end
-
-    Router --> AuthCtx
-    AuthCtx --> Dashboards
-    Dashboards -->|Authenticates| S_Auth
-    Dashboards -->|Queries & Updates| Tables
-    Dashboards -->|Uploads Receipts| S_Storage
-    Tables -->|Invokes Database Automation| Triggers
-    Dashboards -->|Builds Verification QR| PDF
-```
+![System Architecture Diagram](docs/assets/ChatGPT%20Image%20Jul%2028,%202026,%2001_15_33%20AM.png)
 
 ---
 
