@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 interface ActivityStripProps {
   statusCase: 1 | 2 | 3 | 4;
@@ -12,31 +13,35 @@ const ActivityStrip: React.FC<ActivityStripProps> = ({ statusCase }) => {
           text: 'No documents uploaded yet.',
           sub: 'Start by uploading your ID card, lab manual, and library receipt.',
           badge: null,
-          action: 'Go to Documents →'
+          action: 'Go to Documents →',
+          to: '/student/vault'
         };
       case 2:
         return {
           text: '3 documents submitted — awaiting admin review.',
-          sub: 'Last uploaded: Lab Manual · 2 hours ago',
+          sub: 'Your application is progressing through the institutional pipeline.',
           badge: 'UNDER REVIEW',
           badgeClass: 'under-review',
-          action: null
+          action: null,
+          to: null
         };
       case 3:
         return {
           text: 'All documents verified and approved.',
-          sub: 'Submitted on: 14 April 2025',
+          sub: 'Institutional clearance complete. Download your certificate below.',
           badge: 'APPROVED',
           badgeClass: 'approved',
-          action: null
+          action: null,
+          to: null
         };
       case 4:
         return {
           text: '1 document requires resubmission.',
-          sub: 'Library Receipt was rejected. Reason: Illegible scan.',
+          sub: 'One of your uploads was rejected. Please re-upload to continue.',
           badge: 'ACTION REQUIRED',
           badgeClass: 'action-required',
-          action: 'Resubmit Document →'
+          action: 'Resubmit Document →',
+          to: '/student/vault'
         };
       default:
         return null;
@@ -59,10 +64,10 @@ const ActivityStrip: React.FC<ActivityStripProps> = ({ statusCase }) => {
             {content.badge}
           </span>
         )}
-        {content.action && (
-          <a href="#" className="label" style={{ color: 'var(--accent-color)', fontWeight: 600 }}>
+        {content.action && content.to && (
+          <Link to={content.to} className="label" style={{ color: 'var(--accent-color)', fontWeight: 600, textDecoration: 'none' }}>
             {content.action}
-          </a>
+          </Link>
         )}
       </div>
     </div>

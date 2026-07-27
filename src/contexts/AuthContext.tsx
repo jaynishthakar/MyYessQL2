@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import type { User, Session } from '@supabase/supabase-js';
 
-export type UserRole = 'student' | 'lab' | 'hod' | 'principal' | 'admin' | null;
+export type UserRole = 'student' | 'lab' | 'hod' | 'principal' | 'admin' | 'librarian' | null;
 
 interface AuthContextType {
   user: User | null;
@@ -11,6 +11,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  refreshRole: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -22,31 +23,50 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchUserRole(session.user.id);
-      } else {
-        setLoading(false);
-      }
-    });
+    let mounted = true;
+    let authListener: any = null;
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        await fetchUserRole(session.user.id);
-      } else {
-        setRole(null);
-        setLoading(false);
+    const setupAuth = async () => {
+      try {
+        // Only fetch session once
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!mounted) return;
+        
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          await fetchUserRole(session.user.id);
+        } else {
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('Error fetching initial session:', error);
+        if (mounted) setLoading(false);
       }
-    });
+
+      if (!mounted) return;
+
+      // Subscribe to future changes, ignoring the immediate INITIAL_SESSION
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (!mounted || event === 'INITIAL_SESSION') return;
+        
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          await fetchUserRole(session.user.id);
+        } else {
+          setRole(null);
+          setLoading(false);
+        }
+      });
+      authListener = subscription;
+    };
+
+    setupAuth();
 
     return () => {
-      subscription.unsubscribe();
+      mounted = false;
+      if (authListener) authListener.unsubscribe();
     };
   }, []);
 
@@ -60,7 +80,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .single();
 
       // 2. If profile is missing (PGRST116 code), create it automatically
-      // This happens after a database reset for existing Auth users
       if (error && (error.code === 'PGRST116' || error.message.includes('No rows'))) {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
@@ -70,7 +89,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               id: userId,
               full_name: user.user_metadata?.full_name || user.email?.split('@')[0],
               role: user.user_metadata?.role || 'student',
-              student_uid: user.user_metadata?.student_uid || null
+              student_uid: user.user_metadata?.student_uid || null,
+              department: user.user_metadata?.department || null
             }, { onConflict: 'id' })
             .select('role')
             .single();
@@ -100,7 +120,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signOut = async () => {
     try {
-      // Clear state locally first for immediate UI response
       setUser(null);
       setRole(null);
       setSession(null);
@@ -110,8 +129,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const refreshRole = async () => {
+    if (user) await fetchUserRole(user.id);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, role, session, loading, signOut }}>
+    <AuthContext.Provider value={{ user, role, session, loading, signOut, refreshRole }}>
       {children}
     </AuthContext.Provider>
   );

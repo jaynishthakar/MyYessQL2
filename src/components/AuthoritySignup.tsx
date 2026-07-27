@@ -11,6 +11,7 @@ const AuthoritySignup: React.FC = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState<AuthorityRole | ''>('');
+  const [department, setDepartment] = useState('');
   
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -20,11 +21,20 @@ const AuthoritySignup: React.FC = () => {
     { label: 'Lab Assistant', value: 'lab' },
     { label: 'HOD', value: 'hod' },
     { label: 'Principal', value: 'principal' },
-    { label: 'Librarian', value: 'admin' },
+    { label: 'Librarian', value: 'librarian' },
+  ];
+
+  const departments = [
+    'Computer Science',
+    'Electronics',
+    'Mechanical',
+    'Civil',
+    'Information Technology',
+    'Administration'
   ];
 
   const validate = () => {
-    if (!fullName || !email || !password || !confirmPassword || !role) return 'All fields are required';
+    if (!fullName || !email || !password || !confirmPassword || !role || !department) return 'All fields are required';
     if (!/^\S+@\S+\.\S+$/.test(email)) return 'Invalid email format';
     if (password.length < 8) return 'Password must be at least 8 characters';
     if (password !== confirmPassword) return 'Passwords do not match';
@@ -43,7 +53,7 @@ const AuthoritySignup: React.FC = () => {
     setError(null);
 
     try {
-      const { error: signUpError } = await signUp(email, password, fullName, role as AuthorityRole);
+      const { error: signUpError } = await signUp(email, password, fullName, role as AuthorityRole, department);
 
       if (signUpError) throw signUpError;
 
@@ -125,6 +135,20 @@ const AuthoritySignup: React.FC = () => {
                   </button>
                 ))}
               </div>
+            </div>
+            <div className="input-group wide">
+              <label className="label">Academic Department</label>
+              <select 
+                className="select-field"
+                value={department}
+                onChange={(e) => setDepartment(e.target.value)}
+                style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #222', color: 'white', borderRadius: '4px' }}
+              >
+                <option value="" disabled>Select Department...</option>
+                {departments.map(d => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
             </div>
           </div>
 

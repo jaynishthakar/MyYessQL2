@@ -13,14 +13,22 @@ import AuthorityLogin from './components/AuthorityLogin';
 import AuthorityDashboard from './components/AuthorityDashboard';
 import AuthorityRoute from './components/AuthorityRoute';
 import StudentApplicationPage from './components/StudentApplicationPage';
+import DocumentVault from './components/DocumentVault';
+import StudentPortalLayout from './components/StudentPortalLayout';
+import StudentFinancesPage from './components/StudentFinancesPage';
+import CertificateVerificationPage from './components/CertificateVerificationPage';
 
 function App() {
   const { user, role, loading } = useAuth();
   const location = useLocation();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
-  // Hide global navbar on authority dashboard
-  const isAuthorityDashboard = location.pathname === '/authority/dashboard';
+  // Hide global navbar on authenticated dashboards/portals
+  const isPortalView = 
+    location.pathname.startsWith('/authority/dashboard') || 
+    location.pathname === '/dashboard' || 
+    location.pathname.startsWith('/student/') ||
+    location.pathname.startsWith('/admin');
 
   const openAuthModal = () => setIsAuthModalOpen(true);
   const closeAuthModal = () => setIsAuthModalOpen(false);
@@ -39,7 +47,7 @@ function App() {
       <InteractiveBackground />
       <div className="grain-overlay"></div>
       
-      {!isAuthorityDashboard && (
+      {!isPortalView && (
         <Navbar 
           onLoginClick={openAuthModal}
           onRegisterClick={openAuthModal}
@@ -51,7 +59,7 @@ function App() {
           <Route path="/" element={
             !user ? (
               <LandingPage onGetStarted={openAuthModal} />
-            ) : role === 'admin' || role === 'hod' || role === 'lab' || role === 'principal' ? (
+            ) : role === 'admin' || role === 'hod' || role === 'lab' || role === 'principal' || role === 'librarian' ? (
               <Navigate to="/authority/dashboard" replace />
             ) : (
               <Navigate to="/dashboard" replace />
@@ -60,18 +68,40 @@ function App() {
           
           <Route path="/dashboard" element={
             <ProtectedRoute allowedRoles={['student']}>
-              <StudentDashboard />
+              <StudentPortalLayout>
+                <StudentDashboard />
+              </StudentPortalLayout>
             </ProtectedRoute>
           } />
 
           <Route path="/student/application" element={
             <ProtectedRoute allowedRoles={['student']}>
-              <StudentApplicationPage />
+              <StudentPortalLayout>
+                <StudentApplicationPage />
+              </StudentPortalLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/student/vault" element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <StudentPortalLayout>
+                <div style={{ padding: '60px' }}>
+                  <DocumentVault />
+                </div>
+              </StudentPortalLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/student/finances" element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <StudentPortalLayout>
+                <StudentFinancesPage />
+              </StudentPortalLayout>
             </ProtectedRoute>
           } />
 
           <Route path="/admin" element={
-            <ProtectedRoute allowedRoles={['admin']}>
+            <ProtectedRoute allowedRoles={['admin', 'librarian']}>
               <div className="admin-dashboard">
                 <h1>Admin Dashboard</h1>
                 <p>Welcome, administrator. Here you can manage the application.</p>
@@ -88,6 +118,8 @@ function App() {
               <AuthorityDashboard />
             </AuthorityRoute>
           } />
+
+          <Route path="/verify/:applicationId" element={<CertificateVerificationPage />} />
 
           <Route path="/unauthorized" element={
             <div className="error-page">

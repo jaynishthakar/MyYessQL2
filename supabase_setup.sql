@@ -30,7 +30,8 @@ create table public.profiles (
   full_name text,
   avatar_url text,
   student_uid text,
-  role text default 'student' check (role in ('student', 'lab', 'hod', 'principal', 'admin')),
+  department text,
+  role text default 'student' check (role in ('student', 'librarian', 'lab', 'hod', 'principal', 'admin')),
 
   constraint username_length check (char_length(username) >= 3),
   constraint student_uid_length check (student_uid is null or char_length(student_uid) = 10)
@@ -43,6 +44,7 @@ create table public.applications (
   status text default 'lab_pending' check (status in ('lab_pending', 'hod_pending', 'principal_pending', 'approved', 'rejected')),
   current_stage text default 'lab',
   department text,
+  purpose text,
   document_ids uuid[] default '{}',
   is_submitted boolean default false,
   created_at timestamp with time zone default now()
@@ -52,11 +54,12 @@ create table public.applications (
 create table public.approvals (
   id uuid not null default uuid_generate_v4() primary key,
   application_id uuid references public.applications(id) on delete cascade,
-  role text check (role in ('lab', 'hod', 'principal')),
+  role text check (role in ('librarian', 'lab', 'hod', 'principal')),
   status text default 'pending' check (status in ('pending', 'approved', 'rejected')),
   comment text,
   actor_id uuid references public.profiles(id) on delete set null,
-  updated_at timestamp with time zone default now()
+  updated_at timestamp with time zone default now(),
+  unique(application_id, role)
 );
 
 -- Documents Table (Application-Independent vault)
@@ -100,7 +103,7 @@ begin
   return exists (
     select 1 from public.profiles 
     where id = auth.uid() 
-    and role in ('lab', 'hod', 'principal', 'admin')
+    and role in ('librarian', 'lab', 'hod', 'principal', 'admin')
   );
 end;
 $$ language plpgsql security definer;
@@ -109,16 +112,19 @@ $$ language plpgsql security definer;
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
-  insert into public.profiles (id, full_name, role, student_uid)
+  insert into public.profiles (id, full_name, role, student_uid, department)
   values (
     new.id, 
     new.raw_user_meta_data->>'full_name', 
     coalesce(new.raw_user_meta_data->>'role', 'student'),
-    new.raw_user_meta_data->>'student_uid'
-  );
+    nullif(new.raw_user_meta_data->>'student_uid', ''),
+    nullif(new.raw_user_meta_data->>'department', '')
+  )
+  on conflict (id) do nothing;
   return new;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer
+set search_path = public;
 
 create trigger on_auth_user_created
   after insert on auth.users
@@ -144,6 +150,7 @@ begin
   if NEW.is_submitted = true and OLD.is_submitted = false then
     insert into public.approvals (application_id, role, status)
     values
+      (NEW.id, 'librarian', 'pending'),
       (NEW.id, 'lab', 'pending'),
       (NEW.id, 'hod', 'pending'),
       (NEW.id, 'principal', 'pending');
@@ -161,7 +168,11 @@ create or replace function public.advance_application_stage()
 returns trigger as $$
 begin
   if NEW.status = 'approved' and OLD.status = 'pending' then
-    if NEW.role = 'lab' then
+    if NEW.role = 'librarian' then
+      update public.applications
+      set status = 'lab_pending', current_stage = 'lab'
+      where id = NEW.application_id;
+    elsif NEW.role = 'lab' then
       update public.applications
       set status = 'hod_pending', current_stage = 'hod'
       where id = NEW.application_id;
@@ -204,41 +215,30 @@ create policy "Students can view their own applications." on applications for se
 create policy "Students can create applications." on applications for insert with check (auth.uid() = student_id);
 create policy "Students can update own draft applications." on applications for update using (auth.uid() = student_id and is_submitted = false);
 
-create policy "Lab sees own department applications" on applications for select
+create policy "Authorities can view submitted applications" on applications for select
 using (
-  department = (select department from public.profiles where id = auth.uid())
-  and (select role from public.profiles where id = auth.uid()) = 'lab'
-  and is_submitted = true
+  is_submitted = true and 
+  exists (select 1 from public.profiles where id = auth.uid() and role in ('librarian', 'lab', 'hod', 'principal', 'admin'))
 );
 
-create policy "HOD sees own department applications" on applications for select
+create policy "Authorities can update application stages" on applications for update
 using (
-  department = (select department from public.profiles where id = auth.uid())
-  and (select role from public.profiles where id = auth.uid()) = 'hod'
-  and is_submitted = true
+  is_submitted = true and 
+  exists (select 1 from public.profiles where id = auth.uid() and role in ('librarian', 'lab', 'hod', 'principal', 'admin'))
+)
+with check (
+  is_submitted = true and 
+  exists (select 1 from public.profiles where id = auth.uid() and role in ('librarian', 'lab', 'hod', 'principal', 'admin'))
 );
 
-create policy "Principal sees all applications" on applications for select
+-- RLS: Approvals (Full Authority Access)
+create policy "Authorities can manage approvals" on approvals for all
 using (
-  (select role from public.profiles where id = auth.uid()) = 'principal'
-  and is_submitted = true
+  exists (select 1 from public.profiles where id = auth.uid() and role in ('librarian', 'lab', 'hod', 'principal', 'admin'))
+)
+with check (
+  exists (select 1 from public.profiles where id = auth.uid() and role in ('librarian', 'lab', 'hod', 'principal', 'admin'))
 );
-
-create policy "Admin sees all submitted applications" on applications for select
-using (
-  (select role from public.profiles where id = auth.uid()) = 'admin'
-  and is_submitted = true
-);
-
--- RLS: Approvals
-create policy "Authorities update own role approvals only" on approvals for update
-using (
-  role = (select role from public.profiles where id = auth.uid())
-  and (select role from public.profiles where id = auth.uid()) in ('lab', 'hod', 'principal')
-);
-
-create policy "Authorities read approvals" on approvals for select
-using (public.is_authority());
 
 create policy "Students read own approvals" on approvals for select
 using (
@@ -273,15 +273,37 @@ drop policy if exists "Only students delete own docs" on storage.objects;
 create policy "Only students delete own docs" on storage.objects for delete
 using (bucket_id = 'documents' AND auth.uid()::text = (storage.foldername(name))[1]);
 
--- Table docs RLS
-create policy "Students and authorities can view documents." on documents for select
-using (auth.uid() = student_id OR public.is_authority());
+-- RLS: Documents
+create policy "Students can view their own documents." on documents for select using (auth.uid() = student_id);
+create policy "Students can upload their own documents." on documents for insert with check (auth.uid() = student_id);
+create policy "Students can delete their own documents." on documents for delete using (auth.uid() = student_id);
 
-create policy "Students can insert their own docs." on documents for insert
+create policy "Authorities can view all documents" on documents for select
+using (exists (select 1 from public.profiles where id = auth.uid() and role in ('librarian', 'lab', 'hod', 'principal', 'admin')));
+
+create policy "Authorities can manage documents" on documents for all
+using (exists (select 1 from public.profiles where id = auth.uid() and role in ('librarian', 'lab', 'hod', 'principal', 'admin')))
+with check (exists (select 1 from public.profiles where id = auth.uid() and role in ('librarian', 'lab', 'hod', 'principal', 'admin')));
+
+-- RLS: Dues
+create policy "Authorities can manage all dues" on dues for all
+using (exists (select 1 from public.profiles where id = auth.uid() and role in ('librarian', 'lab', 'hod', 'principal', 'admin')))
+with check (exists (select 1 from public.profiles where id = auth.uid() and role in ('librarian', 'lab', 'hod', 'principal', 'admin')));
+
+create policy "Students can view their own dues." on dues for select using (auth.uid() = student_id);
+
+create policy "Students can update their own dues status." on dues for update
+using (auth.uid() = student_id)
 with check (auth.uid() = student_id);
 
-create policy "Only students can delete their own docs." on documents for delete
-using (auth.uid() = student_id);
+
+create policy "Librarians can manage dues." on dues for all
+using (
+  (select role from public.profiles where id = auth.uid()) in ('librarian', 'admin')
+)
+with check (
+  (select role from public.profiles where id = auth.uid()) in ('librarian', 'admin')
+);
 
 -- ============================================================================
 -- 7. REQUIRED SCHEMA GRANTS

@@ -50,7 +50,7 @@ const Navbar: React.FC<NavbarProps> = ({
               <div className="student-info" style={{ textAlign: 'right', display: 'flex', flexDirection: 'column' }}>
                 <span className="student-name" style={{ fontSize: '1rem', fontWeight: 700, color: '#fff', letterSpacing: '0.5px' }}>{user.email?.split('@')[0]}</span>
                 <span className="student-batch" style={{ fontSize: '0.75rem', color: 'var(--accent-color)', fontWeight: 600, marginTop: '2px', textTransform: 'uppercase' }}>
-                  {role === 'admin' ? 'Librarian · Authority' : 
+                  {role === 'admin' || role === 'librarian' ? 'Librarian · Authority' : 
                    role === 'hod' ? 'HOD · Department' :
                    role === 'lab' ? 'Lab Assistant' :
                    role === 'principal' ? 'Principal · Nexus' :

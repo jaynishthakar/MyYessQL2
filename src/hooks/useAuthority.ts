@@ -12,9 +12,30 @@ export const useAuthority = () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, role')
+        .select('id, full_name, role, department')
         .eq('id', userId)
         .single();
+
+      if (error && (error.code === 'PGRST116' || error.message.includes('No rows'))) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: newProfile, error: createError } = await supabase
+            .from('profiles')
+            .upsert({
+              id: userId,
+              full_name: user.user_metadata?.full_name || user.email?.split('@')[0],
+              role: user.user_metadata?.role || 'student',
+              department: user.user_metadata?.department || null
+            }, { onConflict: 'id' })
+            .select('id, full_name, role, department')
+            .single();
+
+          if (!createError && newProfile) {
+            setProfile(newProfile as AuthorityProfile);
+            return;
+          }
+        }
+      }
 
       if (error) {
         console.error('Error fetching authority profile:', error);
@@ -31,40 +52,54 @@ export const useAuthority = () => {
   }, []);
 
   useEffect(() => {
-    // Initial session check
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      
-      if (currentUser) {
-        await fetchProfile(currentUser.id);
-      } else {
-        setIsLoading(false);
+    let mounted = true;
+    let authListener: any = null;
+
+    const setupAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!mounted) return;
+        
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+        
+        if (currentUser) {
+          await fetchProfile(currentUser.id);
+        } else {
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error('Error in useAuthority setupAuth:', error);
+        if (mounted) setIsLoading(false);
       }
+
+      if (!mounted) return;
+
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (!mounted || event === 'INITIAL_SESSION') return;
+        
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+        
+        if (currentUser) {
+          await fetchProfile(currentUser.id);
+        } else {
+          setProfile(null);
+          setIsLoading(false);
+        }
+      });
+      authListener = subscription;
     };
 
-    checkSession();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      
-      if (currentUser) {
-        await fetchProfile(currentUser.id);
-      } else {
-        setProfile(null);
-        setIsLoading(false);
-      }
-    });
+    setupAuth();
 
     return () => {
-      subscription.unsubscribe();
+      mounted = false;
+      if (authListener) authListener.unsubscribe();
     };
   }, [fetchProfile]);
 
-  const signUp = async (email: string, password: string, fullName: string, role: AuthorityRole) => {
+  const signUp = async (email: string, password: string, fullName: string, role: AuthorityRole, department: string) => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -74,6 +109,7 @@ export const useAuthority = () => {
           data: {
             full_name: fullName,
             role: role,
+            department: department
           },
         },
       });

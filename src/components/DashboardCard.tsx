@@ -8,9 +8,10 @@ interface DashboardCardProps {
   cta: string;
   href?: string;
   onClick?: () => void;
+  icon?: React.ReactNode;
 }
 
-const DashboardCard: React.FC<DashboardCardProps> = ({ label, title, body, status, cta, href, onClick }) => {
+const DashboardCard: React.FC<DashboardCardProps> = ({ label, title, body, status, cta, href, onClick, icon }) => {
   const CardWrapper = onClick ? 'button' : 'a';
   
   return (
@@ -20,7 +21,10 @@ const DashboardCard: React.FC<DashboardCardProps> = ({ label, title, body, statu
       onClick={onClick}
       style={onClick ? { textAlign: 'left', width: '100%', cursor: 'pointer', background: 'none' } : {}}
     >
-      <span className="card-label label">{label}</span>
+      <div className="card-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <span className="card-label label">{label}</span>
+        {icon && <div className="card-icon-wrapper" style={{ color: 'var(--accent-color)', opacity: 0.8 }}>{icon}</div>}
+      </div>
       <h3 className="card-title serif italic">{title}</h3>
       <p className="card-body">{body}</p>
       <div className="card-status">

@@ -1,4 +1,4 @@
-export type AuthorityRole = 'lab' | 'hod' | 'principal' | 'admin';
+export type AuthorityRole = 'lab' | 'hod' | 'principal' | 'admin' | 'librarian';
 
 export interface AuthorityProfile {
   id: string;

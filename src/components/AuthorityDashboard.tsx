@@ -4,10 +4,12 @@ import { useNavigate } from 'react-router-dom';
 import LabDashboardPanel from './LabDashboardPanel';
 import HodDashboardPanel from './HodDashboardPanel';
 import PrincipalDashboardPanel from './PrincipalDashboardPanel';
+import LibrarianDashboardPanel from './LibrarianDashboardPanel';
 
 const AuthorityDashboard: React.FC = () => {
   const { profile, signOut } = useAuthority();
   const navigate = useNavigate();
+  const [activeLinkId, setActiveLinkId] = React.useState<string>('dues-upload');
 
   const handleSignOut = async () => {
     await signOut();
@@ -19,8 +21,16 @@ const AuthorityDashboard: React.FC = () => {
       case 'lab': return 'Lab Assistant';
       case 'hod': return 'Head of Department';
       case 'principal': return 'Principal';
-      case 'admin': return 'Librarian';
+      case 'admin':
+      case 'librarian': return 'Librarian';
       default: return 'Portal';
+    }
+  };
+
+  const scrollToSection = (id: string) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
 
@@ -28,40 +38,59 @@ const AuthorityDashboard: React.FC = () => {
     const role = profile?.role;
     if (!role) return null;
 
-    const links: Record<string, { label: string; active: boolean }[]> = {
+    const links: Record<string, { label: string; active: boolean; id?: string }[]> = {
       lab: [
-        { label: 'Pending Applications', active: true },
-        { label: 'Cleared Students', active: false },
-        { label: 'Lab Dues Management', active: false },
-        { label: 'Inventory Checklist', active: false }
+        { label: 'Pending Applications', active: true, id: 'lab-pending' },
+        { label: 'Cleared Students', active: false, id: 'lab-cleared' },
+        { label: 'Lab Dues Management', active: false, id: 'lab-dues' },
+        { label: 'Inventory Checklist', active: false, id: 'lab-inventory' }
       ],
       hod: [
-        { label: 'Applications Awaiting HOD', active: true },
-        { label: 'Department Overview', active: false },
-        { label: 'Faculty Escalations', active: false },
-        { label: 'Approval History', active: false }
+        { label: 'Applications Awaiting HOD', active: true, id: 'hod-pending' },
+        { label: 'Department Overview', active: false, id: 'dept-overview' },
+        { label: 'Faculty Escalations', active: false, id: 'faculty-escalations' },
+        { label: 'Approval History', active: false, id: 'approval-history' }
       ],
       principal: [
-        { label: 'Final Approvals', active: true },
-        { label: 'Certificate Queue', active: false },
-        { label: 'Full Student Registry', active: false },
-        { label: 'Institution Metrics', active: false }
+        { label: 'Final Approvals', active: true, id: 'pending-final' },
+        { label: 'Certificate Queue', active: false, id: 'cert-queue' },
+        { label: 'Full Student Registry', active: false, id: 'student-registry' }
       ],
       admin: [
-        { label: 'CSV Dues Upload', active: true },
-        { label: 'Student Dues Registry', active: false },
-        { label: 'Cleared Students', active: false },
-        { label: 'System Logs', active: false }
+        { label: 'CSV Dues Upload', active: true, id: 'dues-upload' },
+        { label: 'Student Dues Registry', active: false, id: 'dues-registry' },
+        { label: 'Cleared Students', active: false, id: 'cleared-students' },
+        { label: 'System Logs', active: false, id: 'system-logs' }
+      ],
+      librarian: [
+        { label: 'CSV Dues Upload', active: true, id: 'dues-upload' },
+        { label: 'Student Dues Registry', active: false, id: 'dues-registry' },
+        { label: 'Cleared Students', active: false, id: 'cleared-students' },
+        { label: 'System Logs', active: false, id: 'system-logs' }
       ],
     };
 
     const roleLinks = links[role as string] || [];
 
-    return roleLinks.map((link: { label: string; active: boolean }, i: number) => (
-      <div key={i} className={`nav-item \${link.active ? 'active' : ''}`}>
-        {link.label}
-      </div>
-    ));
+    return roleLinks.map((link: { label: string; active: boolean; id?: string }, i: number) => {
+      const isActive = link.id ? activeLinkId === link.id : link.active;
+      
+      return (
+        <div 
+          key={i} 
+          className={`nav-item ${isActive ? 'active' : ''}`}
+          onClick={() => {
+            if (link.id) {
+              setActiveLinkId(link.id);
+              scrollToSection(link.id);
+            }
+          }}
+          style={{ cursor: link.id ? 'pointer' : 'default' }}
+        >
+          {link.label}
+        </div>
+      );
+    });
   };
 
   const renderContentPanel = () => {
@@ -101,12 +130,15 @@ const AuthorityDashboard: React.FC = () => {
         title: 'Librarian Dashboard',
         subtext: 'Library Resource & Central Dues Registry',
         theme: '#10B981',
-        stats: [
-          { label: 'Outstanding Dues', val: '56' },
-          { label: 'Cleared Records', val: '512' },
-          { label: 'Last CSV Upload', val: '2h ago' }
-        ],
-        placeholder: 'Manage student library accounts, book returns, and mass-import dues data via institutional CSV files.'
+        stats: [],
+        component: <LibrarianDashboardPanel />
+      },
+      librarian: {
+        title: 'Librarian Dashboard',
+        subtext: 'Library Resource & Central Dues Registry',
+        theme: '#10B981',
+        stats: [],
+        component: <LibrarianDashboardPanel />
       }
     };
 

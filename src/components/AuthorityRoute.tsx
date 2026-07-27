@@ -32,7 +32,7 @@ const AuthorityRoute: React.FC<AuthorityRouteProps> = ({ children }) => {
   }
 
   // If role is fetched and valid
-  const validRoles = ['lab', 'hod', 'principal', 'admin'];
+  const validRoles = ['lab', 'hod', 'principal', 'admin', 'librarian'];
   if (profile && validRoles.includes(profile.role)) {
     return <>{children}</>;
   }
