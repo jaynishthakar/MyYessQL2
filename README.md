@@ -1,73 +1,91 @@
-# React + TypeScript + Vite
+# Nexus - Graduation Clearance Portal
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**Nexus** is a modern, web-based Graduation Clearance (No-Dues) system designed to digitize and automate the traditional manual clearance process in academic institutions. Instead of standing in queues for stamps, students can submit applications, upload required documentation, track clearances across departments in real-time, and download their certificates.
 
-Currently, two official plugins are available:
+🌐 **Live URL:** [https://my-yess-ql-2.vercel.app/](https://my-yess-ql-2.vercel.app/)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## 📸 Interface Preview
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+![Login Interface](docs/assets/login-preview.png)
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## ✨ Features
 
-```js
-export default defineConfig([
-  globalIgnores(["dist"]),
-  {
-    files: ["**/*.{ts,tsx}"],
-    extends: [
-      // Other configs...
+- **Multi-Stage Approval Pipeline:** A sequential approval process that flows dynamically from **Lab Verification** ➔ **Head of Department (HOD) Endorsement** ➔ **Principal Clearance**.
+- **Real-Time Dues Heatmap:** Students get a visual status map showing which departments have approved their clearance and where dues are pending.
+- **Unified Document Vault:** A secure storage system where students upload certificates, receipts, or fee-receipts for verification by corresponding authorities.
+- **Granular Role-Based Access Control (RBAC):** Tailored dashboards and interfaces for:
+  - **Students:** To request clearance, upload files, and check live status.
+  - **Lab Assistants:** To verify departmental lab dues.
+  - **HODs:** To sign off on department-level clearances.
+  - **Principal / Admin:** For final institutional sign-off and system management.
+- **Premium User Experience:** Implements an immersive glassmorphism theme, Space Grotesk/Inter typography, interactive particle backgrounds, and micro-interactions powered by Framer Motion.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+---
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ["./tsconfig.node.json", "./tsconfig.app.json"],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-]);
+## 🛠️ Tech Stack
+
+- **Frontend:** React 19, TypeScript, Vite, React Router 7
+- **Styling:** Vanilla CSS (Glassmorphism design system)
+- **Database & Backend:** Supabase (PostgreSQL, Row-Level Security, Database Functions & Triggers)
+- **Animations:** Framer Motion
+- **Icons:** Lucide React
+
+---
+
+## 📂 Project Structure
+
+```
+├── docs/assets/          # Project images and screenshots
+├── src/
+│   ├── components/      # React functional components (Dashboard, Auth, LandingPage, etc.)
+│   ├── contexts/        # Auth and global state contexts
+│   ├── hooks/           # Custom React hooks (e.g. useSupabase)
+│   ├── lib/             # Supabase client instantiation
+│   ├── types/           # TypeScript interface definitions
+│   ├── App.tsx          # Main application routing and core wrapper
+│   ├── index.css        # Core design tokens and custom CSS theme
+│   └── main.tsx         # App entry point
+├── supabase_setup.sql   # Complete PostgreSQL schema, RLS policies, and triggers
+└── package.json         # Node.js dependencies and scripts
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+---
 
-```js
-// eslint.config.js
-import reactX from "eslint-plugin-react-x";
-import reactDom from "eslint-plugin-react-dom";
+## ⚙️ Local Development Setup
 
-export default defineConfig([
-  globalIgnores(["dist"]),
-  {
-    files: ["**/*.{ts,tsx}"],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs["recommended-typescript"],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ["./tsconfig.node.json", "./tsconfig.app.json"],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-]);
+### Prerequisites
+- Node.js (v18+)
+- npm or yarn
+- A Supabase Project
+
+### 1. Clone & Install Dependencies
+```bash
+git clone https://github.com/AnupNerurkar/MyYessQL2.git
+cd MyYessQL2
+npm install
 ```
+
+### 2. Environment Configuration
+Create a `.env` file in the root directory (based on `.env.example`):
+```env
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+### 3. Setup the Database
+1. Go to your **Supabase Dashboard** ➔ **SQL Editor**.
+2. Copy the entire contents of [supabase_setup.sql](file:///c:/Users/jayni/OneDrive/Documents/projects/myyessql2/supabase_setup.sql) and execute it.
+3. This script will:
+   - Create all necessary tables (`profiles`, `applications`, `approvals`, `documents`, `dues`).
+   - Enable **Row-Level Security (RLS)** for data protection.
+   - Install essential triggers and helper functions to manage the sequential approval pipeline and auto-create user profiles upon signup.
+
+### 4. Run the Dev Server
+```bash
+npm run dev
+```
+Open your browser and navigate to `http://localhost:5173`.
