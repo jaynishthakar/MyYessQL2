@@ -8,7 +8,64 @@
 
 ## 📸 Interface Preview
 
-![Login Interface](docs/assets/login-preview.png)
+![Clearance Portal Dashboard](docs/assets/Screenshot%202026-07-28%20005124.png)
+
+---
+
+## 📖 Project Case Study (STAR Method)
+
+### 📌 Situation
+At academic institutions, graduating students historically spent days waiting in long queues to secure physical "No-Dues" clearance stamps from multiple campus departments (Labs, Library, HOD, and Administration) before they could receive their degrees. This paper-heavy workflow was prone to errors, lacked tracking transparency, and placed a significant administrative burden on staff.
+
+### 🎯 Task
+Develop a secure, automated, and paperless digital pipeline that:
+- Seamlessly moves clearance applications sequentially through departmental checkpoints.
+- Enables students to upload verification receipts, track live approval progress, and pay pending dues.
+- Empowers institutional administrators with dedicated panels to audit, comment on, and approve/reject applications.
+- Instantly issues tamper-proof, verifiable clearance certificates to successful students.
+
+### 🛠️ Action
+- **Frontend & UX:** Engineered a fully responsive React 19 / TypeScript SPA from scratch, utilizing Framer Motion for micro-animations and a bespoke glassmorphic design system.
+- **Backend & Security:** Built a relational database schema on Supabase (PostgreSQL), utilizing **Row-Level Security (RLS)** to partition student data and restrict department actions to authorized accounts.
+- **State Automation:** Designed PostgreSQL database functions and triggers to automatically seed dues, manage state transitions, and enforce a strict approval order (Lab ➔ Library ➔ HOD ➔ Principal).
+- **Security Utilities:** Integrated dynamic QR code generation (`qrcode.react`) and client-side PDF compilation (`html2canvas` + `jspdf`) to produce secure certificates with a digital validator page.
+
+### 🏆 Result
+- Completely eliminated physical paperwork, reducing student clearance processing time from days to minutes.
+- Automated department handoffs, ensuring no approvals can be skipped or bypass institutional policies.
+- Provided third-party recruiters with a 1-second verification page to authenticate graduates' certificates via a QR code.
+
+---
+
+## 🏗️ System Architecture
+
+```mermaid
+flowchart TD
+    subgraph Client [Client-Side Application React/Vite]
+        Router[React Router 7]
+        AuthCtx[Auth Context]
+        Dashboards[Role Dashboards: Student, Lab, Librarian, HOD, Principal]
+        PDF[jsPDF Certificate & Receipt Generator]
+    end
+
+    subgraph Backend [Backend Services Supabase & PostgreSQL]
+        S_Auth[Supabase Auth]
+        S_Storage[Supabase Storage]
+        
+        subgraph DB [PostgreSQL Relational Database]
+            Tables[(Tables: Profiles, Dues, Applications, Approvals)]
+            Triggers[State Transition Triggers & RPCs]
+        end
+    end
+
+    Router --> AuthCtx
+    AuthCtx --> Dashboards
+    Dashboards -->|Authenticates| S_Auth
+    Dashboards -->|Queries & Updates| Tables
+    Dashboards -->|Uploads Receipts| S_Storage
+    Tables -->|Invokes Database Automation| Triggers
+    Dashboards -->|Builds Verification QR| PDF
+```
 
 ---
 
